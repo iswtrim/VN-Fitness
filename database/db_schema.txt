@@ -1,0 +1,52 @@
+-- 1. Пользователи
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    telegram_id BIGINT UNIQUE NOT NULL,
+    username TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Шаблоны тренировок
+CREATE TABLE templates (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Упражнения внутри шаблона
+CREATE TABLE template_exercises (
+    id SERIAL PRIMARY KEY,
+    template_id INTEGER REFERENCES templates(id) ON DELETE CASCADE,
+    exercise_name TEXT NOT NULL,
+    sets_and_reps TEXT NOT NULL,   -- "3 x 16"
+    weight_or_rubber TEXT,         -- "3 кг, без резинки"
+    order_index INTEGER DEFAULT 0
+);
+
+-- 4. Параметры тела
+CREATE TABLE body_parameters (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    weight NUMERIC(5,2),
+    parameters TEXT,               -- свободный текст, например "об=90, от=60"
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Выполненные тренировки (история)
+CREATE TABLE workouts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    template_id INTEGER REFERENCES templates(id) ON DELETE SET NULL, -- NULL, если без шаблона
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT                     -- общие заметки
+);
+
+-- 6. Упражнения внутри выполненной тренировки
+CREATE TABLE workout_exercises (
+    id SERIAL PRIMARY KEY,
+    workout_id INTEGER REFERENCES workouts(id) ON DELETE CASCADE,
+    exercise_name TEXT NOT NULL,
+    sets_and_reps TEXT NOT NULL,
+    weight_or_rubber TEXT
+);
