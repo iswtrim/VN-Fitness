@@ -5,7 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
 from keyboards.templates_menu import templates_menu
-from database.requests import save_template, get_or_create_user
+from database.requests import get_or_create_user, save_template, get_templates, get_template_exercises
 
 router = Router()
 
@@ -166,3 +166,128 @@ async def get_exercise_weight_or_rubber(message: Message, state: FSMContext):
         # Устанавливаем новое состояние и переходим к следующему упражнению
         await state.set_state(AddTemplate.waiting_for_exercise_name)
         await message.answer(f'Напиши название {current_exercise}-го упражнения.')
+
+
+@router.callback_query(F.data == 'view_templates')
+async def view_templates(callback: CallbackQuery):
+    await callback.answer('')
+
+    # Получаем внутренний ID пользователя из БД
+    user_id = await get_or_create_user(
+        telegram_id=callback.from_user.id,
+        username=callback.from_user.username
+    )
+
+    # Загружаем первую страницу (offset = 0)
+    templates, total = await get_templates(user_id, offset=0)
+
+    # Если шаблонов нет - выходим
+    if not templates:
+        await callback.message.edit_text(
+            'У тебя пока нет шаблонов :(',
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text='↪️ Назад', callback_data='templates')]
+            ])
+        )
+        return
+
+    # Клавиатура: каждая кнопка — один шаблон
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+    for t in templates:
+        keyboard.inline_keyboard.append(
+            [InlineKeyboardButton(text=f'{t["name"]}', callback_data=f'view_template_{t["id"]}|{t["name"]}')]
+        )
+
+    # Кнопки навигации
+    nav_buttons = [InlineKeyboardButton(text='↪️ Назад', callback_data='templates'), ]
+
+    if total > 3:  # Если есть больше 3 шаблонов, показываем "Вперёд"
+        nav_buttons.append(InlineKeyboardButton(text='➡️️ Вперёд', callback_data='templates_page_1'))
+
+    keyboard.inline_keyboard.append(nav_buttons)
+
+    await callback.message.edit_text(
+        f'📋 Твои шаблоны (всего {total}):',
+        reply_markup=keyboard
+    )
+
+
+@router.callback_query(F.data.startswith('templates_page_'))
+async def paginate_templates(callback: CallbackQuery):
+    await callback.answer('')
+
+    # Извлекаем номер страницы из callback_data
+    page = int(callback.data.split('_')[-1])
+    offset = page * 3
+
+    user_id = await get_or_create_user(
+        telegram_id=callback.from_user.id,
+        username=callback.from_user.username
+    )
+
+    # Загружаем шаблоны для текущей страницы
+    templates, total = await get_templates(user_id, offset=offset)
+
+    # Если шаблонов нет (такой страницы не существует)
+    if not templates:
+        await callback.answer('Больше шаблонов нет.', show_alert=True)
+        return
+
+    # Строим клавиатуру с шаблонами
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[])
+    for t in templates:
+        keyboard.inline_keyboard.append([
+            InlineKeyboardButton(
+                text=f'{t["name"]}',
+                callback_data=f'view_template_{t["id"]}|{t["name"]}'
+            )
+        ])
+
+    # Кнопки навигации
+    nav_buttons = []
+    if page > 0:  # Если не первая страница, показываем "Назад"
+        nav_buttons.append(InlineKeyboardButton(text='⬅️ Назад', callback_data=f'templates_page_{page - 1}'))
+    if (page + 1) * 3 < total:  # Если есть ещё записи после текущей страницы
+        nav_buttons.append(InlineKeyboardButton(text='➡️ Вперёд', callback_data=f'templates_page_{page + 1}'))
+
+    nav_buttons.append(InlineKeyboardButton(text='↩️ В меню', callback_data='templates'))
+    keyboard.inline_keyboard.append(nav_buttons)
+
+    # Обновляем сообщение
+    await callback.message.edit_text(
+        f'📋 Твои шаблоны (страница {page + 1}, всего {total}):',
+        reply_markup=keyboard
+    )
+
+
+@router.callback_query(F.data.startswith('view_template_'))
+async def view_template_detail(callback: CallbackQuery):
+    await callback.answer('')
+
+    # Разделяем строку по '|'
+    parts = callback.data.split('|')
+    # parts[0] — это 'view_template_5', parts[1] — имя
+    template_id = int(parts[0].split('_')[-1])  # получаем число
+    template_name = parts[1]  # получаем имя
+
+    # Получаем упражнения из БД
+    exercises = await get_template_exercises(template_id)
+
+    # Формируем текст с упражнениями
+    text = f"📋 Шаблон «{template_name}»\n\n"
+    text += "Упражнения:\n"
+    text += "═══════════════════\n\n"
+
+    for idx, ex in enumerate(exercises, start=1):
+        text += f"{idx}. {ex['exercise_name']}\n"
+        text += f"   ▫️ Подходы и повторения: {ex['sets_and_reps']}\n"
+        if ex['weight_or_rubber']:
+            text += f"   ▫️ Вес/резинка: {ex['weight_or_rubber']}\n"
+        text += "\n"
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='↪️ Назад к списку шаблонов', callback_data='view_templates')],
+        [InlineKeyboardButton(text='↩️ В главное меню шаблонов', callback_data='templates')]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=keyboard)

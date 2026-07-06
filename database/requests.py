@@ -49,12 +49,46 @@ async def save_template(user_id: int, template_name: str, exercises: list):
         await conn.close()
 
 
-async def view_templates(user_id: int):
+async def get_templates(user_id: int, offset: int = 0):
     """
-    Показывает пользователю его шаблоны
+    Показывает пользователю его шаблоны (по 3 шаблона на одной странице).
     """
     conn = await apg.connect(DATABASE_URL)
     try:
-        templates_list = await conn.fetchrow
+        templates = await conn.fetch(
+            """SELECT id, name
+            FROM templates
+            WHERE user_id = $1
+            ORDER BY id
+            LIMIT 3
+            OFFSET $2""",
+            user_id, offset
+        )
+
+        # Общее количество шаблонов пользователя
+        total = await conn.fetchval(
+            "SELECT COUNT(*) FROM templates WHERE user_id = $1",
+            user_id
+        )
+
+        return templates, total
+    finally:
+        await conn.close()
+
+
+async def get_template_exercises(template_id: int):
+    """
+    Возвращает список упражнений для конкретного шаблона.
+    """
+    conn = await apg.connect(DATABASE_URL)
+    try:
+        exercises = await conn.fetch(
+            """SELECT exercise_name, sets_and_reps, weight_or_rubber 
+               FROM template_exercises 
+               WHERE template_id = $1 
+               ORDER BY order_index""",
+            template_id
+        )
+        return exercises
     finally:
         await conn.close()
