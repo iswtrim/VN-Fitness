@@ -92,3 +92,14 @@ async def get_template_exercises(template_id: int):
         return exercises
     finally:
         await conn.close()
+
+
+async def delete_template_by_id(template_id: int):
+    """
+    Удаляет шаблон и все его упражнения из БД.
+    """
+    conn = await apg.connect(DATABASE_URL)
+    try:
+        await conn.execute("DELETE FROM templates WHERE id = $1", template_id)
+    finally:
+        await conn.close()
