@@ -32,9 +32,9 @@ async def get_help(message: Message, state: FSMContext):
 
 <i>Разделы:</i>
 ═══════════════════
-📋 <b>Шаблоны:</b> добавить, посмотреть, удалить
 🏋️‍♀️ <b>Тренировки:</b> добавить по шаблону, история
-📏 <b>Параметры:</b> записать, посмотреть
+📋 <b>Шаблоны тренировок:</b> добавить, посмотреть, удалить
+📏 <b>Параметры тела:</b> записать, посмотреть
 
 <i>Команды:</i>
 ═══════════════════
@@ -70,12 +70,12 @@ async def get_main_menu(message: Message, state: FSMContext):
 async def back_to_main_menu(callback: CallbackQuery):
     await callback.answer('')
 
-    # Проверяем, есть ли текст в сообщении
     if callback.message.text:
         await callback.message.edit_text(
             'Что тебя интересует?',
             reply_markup=get_main_keyboard()
         )
+    # Условие для корректной работы команды get_motivation
     else:
         await callback.message.answer(
             'Что тебя интересует?',

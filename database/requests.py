@@ -103,3 +103,67 @@ async def delete_template_by_id(template_id: int):
         await conn.execute("DELETE FROM templates WHERE id = $1", template_id)
     finally:
         await conn.close()
+
+
+async def save_parameters(user_id: int, weight: float, parameters_text: str):
+    """
+    Сохраняет параметры тела пользователя.
+    """
+    conn = await apg.connect(DATABASE_URL)
+    try:
+        await conn.execute(
+            "INSERT INTO body_parameters (user_id, weight, parameters) VALUES ($1, $2, $3)",
+            user_id, weight, parameters_text
+        )
+    finally:
+        await conn.close()
+
+
+async def get_parameters(user_id: int, offset: int = 0):
+    """
+    Возвращает список параметров пользователя с пагинацией.
+    """
+    conn = await apg.connect(DATABASE_URL)
+    try:
+        records = await conn.fetch(
+            """SELECT id, weight, parameters, date
+            FROM body_parameters
+            WHERE user_id = $1
+            ORDER BY date DESC
+            LIMIT 3
+            OFFSET $2""",
+            user_id, offset
+        )
+        total = await conn.fetchval(
+            "SELECT COUNT(*) FROM body_parameters WHERE user_id = $1",
+            user_id
+        )
+        return records, total
+    finally:
+        await conn.close()
+
+
+async def get_parameter_details(parameter_id: int):
+    """
+    Возвращает полную информацию о записи параметров.
+    """
+    conn = await apg.connect(DATABASE_URL)
+    try:
+        record = await conn.fetchrow(
+            "SELECT id, weight, parameters, date FROM body_parameters WHERE id = $1",
+            parameter_id
+        )
+        return record
+    finally:
+        await conn.close()
+
+
+async def delete_parameter_by_id(parameter_id: int):
+    """
+    Удаляет запись параметров по ID.
+    """
+    conn = await apg.connect(DATABASE_URL)
+    try:
+        await conn.execute("DELETE FROM body_parameters WHERE id = $1", parameter_id)
+    finally:
+        await conn.close()

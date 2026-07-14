@@ -5,13 +5,14 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
 from keyboards.templates_menu import templates_menu
-from database.requests import get_or_create_user, save_template, get_templates, get_template_exercises, delete_template_by_id
+from database.requests import get_or_create_user, save_template, get_templates, get_template_exercises, \
+    delete_template_by_id
 
 router = Router()
 
 
 class AddTemplate(StatesGroup):
-    waiting_for_template_name = State()
+    waiting_for_template_name = State()  # ждём название шаблона
     waiting_for_exercises_count = State()  # ждём сколько упражнений
     waiting_for_exercise_name = State()  # ждём название упражнения
     waiting_for_sets_and_reps = State()  # ждём начальное количество подходов и повторений
@@ -184,7 +185,8 @@ async def view_templates(callback: CallbackQuery):
     # Если шаблонов нет - выходим
     if not templates:
         await callback.message.edit_text(
-            'У тебя пока нет шаблонов :(',
+            'У тебя пока нет шаблонов :(\n\n'
+            'Добавь первый через кнопку "Добавить шаблон".',
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text='↩️ В меню', callback_data='templates')]
             ])
@@ -199,7 +201,7 @@ async def view_templates(callback: CallbackQuery):
         )
 
     # Кнопки навигации
-    nav_buttons = [InlineKeyboardButton(text='↩️ В меню', callback_data='templates'), ]
+    nav_buttons = [InlineKeyboardButton(text='↩️ В меню', callback_data='templates')]
 
     if total > 3:  # Если есть больше 3 шаблонов, показываем "Вперёд"
         nav_buttons.append(InlineKeyboardButton(text='➡️️ Вперёд', callback_data='templates_page_1'))
@@ -286,7 +288,8 @@ async def view_template_detail(callback: CallbackQuery):
         text += "\n"
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text='🗑️ Удалить шаблон', callback_data=f'confirm_delete_{template_id}|{template_name}')],
+        [InlineKeyboardButton(text='🗑️ Удалить шаблон',
+                              callback_data=f'confirm_delete_template_{template_id}|{template_name}')],
         [InlineKeyboardButton(text='📋 Назад к списку шаблонов', callback_data='view_templates')],
         [InlineKeyboardButton(text='↩️ В меню шаблонов', callback_data='templates')]
     ])
@@ -294,8 +297,8 @@ async def view_template_detail(callback: CallbackQuery):
     await callback.message.edit_text(text, reply_markup=keyboard)
 
 
-@router.callback_query(F.data.startswith('confirm_delete_'))
-async def confirm_delete(callback: CallbackQuery):
+@router.callback_query(F.data.startswith('confirm_delete_template_'))
+async def confirm_delete_template(callback: CallbackQuery):
     await callback.answer('')
 
     parts = callback.data.split('|')
@@ -312,8 +315,7 @@ async def confirm_delete(callback: CallbackQuery):
     ])
 
     await callback.message.edit_text(
-        f"⚠️ Ты уверен, что хочешь удалить шаблон «{template_name}»?\n\n"
-        f"Это действие нельзя отменить.",
+        f"⚠️ Ты уверен, что хочешь удалить шаблон «{template_name}»?\n\nЭто действие нельзя отменить.",
         reply_markup=keyboard
     )
 
