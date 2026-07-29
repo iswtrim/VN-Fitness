@@ -15,3 +15,7 @@ if ids_str:
 DATABASE_URL=os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     raise ValueError('DATABASE_URL не задан в .env')
+
+SQLALCHEMY_DATABASE_URL=os.getenv('SQLALCHEMY_DATABASE_URL')
+if not SQLALCHEMY_DATABASE_URL:
+    raise ValueError('SQLALCHEMY_DATABASE_URL не задан в .env')

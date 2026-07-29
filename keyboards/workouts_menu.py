@@ -1,16 +1,4 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
-
-# trainings = ['Тренировка 1.05', 'Тренировка 3.05', 'Тренировка 5.05']
-#
-# async def inline_trainings():
-#     keyboard = InlineKeyboardBuilder()
-#
-#     for train in trainings:
-#         keyboard.add(InlineKeyboardButton(text=train, url='https://youtube.com'))
-#
-#     return keyboard.adjust(3).as_markup()
 
 
 def workouts_menu():
